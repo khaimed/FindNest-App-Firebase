@@ -225,7 +225,8 @@ body{
   border-radius: 5px;
 }
 .result .container .product .product_title{
-  font-size: 28px;
+  font-size: 26px;
+  word-break: break-word;
   width: 100%;
   opacity: 0;
   transform: translateY(-180px);
