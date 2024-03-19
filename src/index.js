@@ -103,12 +103,14 @@ ipcMain.on('avito-caller', async (event, value) => {
   let driver;
 
   try {
-    driver = await new Builder().forBrowser('chrome').setChromeOptions(options).build();
+    driver = await new Builder().forBrowser('chrome')
+    .setChromeOptions(options)
+    .build();
 
     let url = 'https://www.avito.ma/';
     await driver.get(url)
 
-    await driver.findElement(By.name('keyword')).sendKeys(value, Key.ENTER)
+    await driver.findElement(By.xpath('//*[@id="keyword-suggestion"]/div/input')).sendKeys(value, Key.ENTER)
 
     let data = [];
 
@@ -120,14 +122,14 @@ ipcMain.on('avito-caller', async (event, value) => {
     data.push(['Titles', 'Images', 'Prices', 'Url']);
     // function to click and navigate for each page
     const navigateToPage = async (x) => {
-      await driver.findElement(By.xpath(`//*[@id="__next"]/div/main/div/div[5]/div[1]/div/div[4]/div/a[${x}]`)).click();
+      await driver.findElement(By.xpath(`//*[@id="__next"]/div/main/div/div[5]/div[1]/div/div[2]/div/a[${x}]`)).click();
     }
     // Upload Data
     const uploadData = async () => {
-      let titles = await driver.findElements(By.xpath('/html/body/div[1]/div/main/div/div[5]/div[1]/div/div[3]/a/div[3]/div/p'))
-      let images = await driver.findElements(By.xpath('/html/body/div[1]/div/main/div/div[5]/div[1]/div/div[3]/a/div//img'))
-      let prices = await driver.findElements(By.xpath('/html/body/div[1]/div/main/div/div[5]/div[1]/div/div[3]/a/div[3]/div/div/p'))
-      let urls = await driver.findElements(By.xpath('/html/body/div[1]/div/main/div/div[5]/div[1]/div/div[3]/a'))
+      let titles = await driver.findElements(By.xpath('//*[@id="__next"]/div/main/div/div[5]/div[1]/div/div[1]/a/div[3]/div/p'))
+      let images = await driver.findElements(By.xpath('//*[@id="__next"]/div/main/div/div[5]/div[1]/div/div[1]/a/div[2]/div/div[2]/img'))
+      let prices = await driver.findElements(By.xpath('//*[@id="__next"]/div/main/div/div[5]/div[1]/div/div[1]/a/div[3]/div/div/p'))
+      let urls = await driver.findElements(By.xpath('//*[@id="__next"]/div/main/div/div[5]/div[1]/div/div[1]/a'))
       for (let i = 0; i < titles.length; i++) {
         if (prices[i]) {
           let title = await titles[i].getText();
@@ -142,7 +144,7 @@ ipcMain.on('avito-caller', async (event, value) => {
       }
     }
     // The final number page to stop it
-    let finNumberPage = (await driver.findElements(By.xpath('/html/body/div[1]/div/main/div/div[5]/div[1]/div/div[4]/div/a'))).length
+    let finNumberPage = (await driver.findElements(By.xpath('//*[@id="__next"]/div/main/div/div[5]/div[1]/div/div[2]/div/a'))).length
     if(finNumberPage === 0){
       await uploadData()
       mainWindow.webContents.send("load-progress", 100);
@@ -192,36 +194,108 @@ ipcMain.on('jumia-caller',  async (event, value) => {
       await driver.get(url)
 
       if(await driver.findElement(By.css('.popup')).getAttribute('class').then(classes => classes.includes('_open'))){
-          await driver.findElement(By.xpath('/html/body/div[1]/div[4]/div/section/button')).click()
+          await driver.findElement(By.xpath('//*[@id="pop"]/div/section/button')).click()
       }
       // put the value to search
       await driver.findElement(By.name('q')).sendKeys(value,Key.ENTER);
-      
       let lengthValue;
+      const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+
       const getfinNumberPage = async () => {
-        const lengthOfBar = await driver.findElements(By.xpath('//*[@id="jm"]/main/div[2]/div[3]/section/div[2]/a'))
-        const numberTwo = await driver.findElement(By.xpath('/html/body/div[1]/main/div[2]/div[3]/section/div[2]/a[4]'))
-        const numberMax = await driver.findElement(By.xpath('/html/body/div[1]/main/div[2]/div[3]/section/div[2]/a[5]'))
-        const goTo= await driver.findElement(By.xpath('/html/body/div[1]/main/div[2]/div[3]/section/div[2]/a[7]'))
-        const backTo = await driver.findElement(By.xpath('/html/body/div[1]/main/div[2]/div[3]/section/div[2]/a[1]'))
-        await driver.executeScript(`window.scrollTo(0, 999);`);
-        if(lengthOfBar.length == 6){
-          lengthValue = numberTwo.getText()
-            return lengthValue
-        } else if (lengthOfBar.length == 7){
-            goTo.click()
-            lengthValue = numberMax.getText()
-            backTo.click()
+        if((await driver.findElements(By.xpath('//*[@id="jm"]/main/div[2]/div[3]/section/div[2]/a'))).length === 6){
+          lengthValue = (await driver.findElement(By.xpath('//*[@id="jm"]/main/div[2]/div[3]/section/div[2]/a[4]'))).getText()
           return lengthValue
-        } else if(lengthOfBar == 0){
-          return lengthValue = lengthOfBar.length
+        } else if ((await driver.findElements(By.xpath('//*[@id="jm"]/main/div[2]/div[3]/section/div[2]/a'))).length === 7){
+          await sleep(1000)
+          await driver.executeScript(`document.evaluate('//*[@id="jm"]/main/div[2]/div[3]/section/div[2]/a[7]', document, null, 
+            XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.click();`);
+          await sleep(1000)
+          lengthValue = await driver.findElement(By.xpath('//*[@id="jm"]/main/div[2]/div[3]/section/div[2]/a[5]')).getText()
+          await sleep(1000)
+          await driver.executeScript(`document.evaluate('//*[@id="jm"]/main/div[2]/div[3]/section/div[2]/a[1]', document, null, 
+            XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.click();`);
+          return lengthValue
+        } else if((await driver.findElements(By.xpath('//*[@id="jm"]/main/div[2]/div[3]/section/div[2]/a'))).length === 0){
+          return lengthValue = 0
         }
       }
-      
-      lengthValue = await getfinNumberPage()
+      await sleep(1000)
+      await getfinNumberPage()
+
+      let data = [];
+
+      ipcMain.on('stop-searching', async (event) => {
+        await driver.quit()
+      });
+
+      // Add headers to the data array
+      data.push(['Titles', 'Images', 'Prices', 'Url']);
+      // function to click and navigate for each page
+      // const navigateToPage = async (x) => {
+      //   await driver.executeScript(`document.evaluate('//*[@id="jm"]/main/div[2]/div[3]/section/div[2]/a[${x}]', document, null, 
+      //       XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.click();`);
+      //   // await driver.findElement(By.xpath(`//*[@id="__next"]/div/main/div/div[5]/div[1]/div/div[2]/div/a[${x}]`)).click();
+      // }
+      // Upload Data
+      const uploadData = async () => {
+        let titles = await driver.findElements(By.xpath('//*[@id="jm"]/main/div[2]/div[3]/section/div[1]/article/a[2]/div[2]/h3'))
+        let images = await driver.findElements(By.xpath('//*[@id="jm"]/main/div[2]/div[3]/section/div[1]/article/a[2]/div[1]/img'))
+        let prices = await driver.findElements(By.xpath('//*[@id="jm"]/main/div[2]/div[3]/section/div[1]/article/a[2]/div[2]/div[1]'))
+        let urls = await driver.findElements(By.xpath('//*[@id="jm"]/main/div[2]/div[3]/section/div[1]/article/a[2]'))
+        for (let i = 0; i < titles.length; i++) {
+          if (prices[i]) {
+            let title = await titles[i].getText();
+            let image = await images[i].getAttribute('src');
+            let price = await prices[i].getText();
+            let url = await urls[i].getAttribute('href');
+            let article = title + '\n' + image + '\n' + price.replace(/,/g, '') + '\n' + url;
+            let articles = article.split('\n');
+            data.push(articles);
+            saveAppDB(title , image , price.replace(/,/g, ''), url)
+          }
+        }
+      }
+      // The final number page to stop it
+      let finNumberPage = lengthValue
+      if(finNumberPage === 0){
+        await uploadData()
+        mainWindow.webContents.send("load-progress", 100);
+      }
+      // Browse for a specified period
+      for (let i = 0; i < finNumberPage; i++) {
+        // console.log(`The page ${i + 1}`)
+
+        const progressValue = (((i + 1) / finNumberPage) * 100).toFixed(2);
+        // console.log(progressValue)
+
+        //here i want to send the progressValue to rendrer.js
+        mainWindow.webContents.send("load-progress", progressValue);
+
+        let numberPages = (await driver.findElements(By.xpath('//*[@id="jm"]/main/div[2]/div[3]/section/div[2]/a'))).length
+        if (i === 0) {
+          await uploadData()
+          // await navigateToPage(numberPages);
+          await driver.executeScript(`document.evaluate('//*[@id="jm"]/main/div[2]/div[3]/section/div[2]/a[6]', document, null, 
+           XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.click();`);
+        } else if (i + 1 === finNumberPage) {
+          console.log('stopping the loop.');
+          break;
+        } else {
+          await uploadData();
+          // await navigateToPage(numberPages);
+          await driver.executeScript(`document.evaluate('//*[@id="jm"]/main/div[2]/div[3]/section/div[2]/a[6]', document, null, 
+           XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.click();`);
+        }
+      }
+
+      onValue(findNestDB, (snapshot) => {
+        const data = snapshot.val();
+        mainWindow.webContents.send('data-read', data);
+      });
+      await driver.quit();
 
     } catch (error){
-      console.log("the error is :", error)
+      console.error(error)
       await driver.quit();
     }
 });
@@ -233,7 +307,3 @@ ipcMain.on('aliexpress-caller', (event, value) => {
 ipcMain.on('banggood-caller', (event, value) => {
   
 });
-
-
-
-
