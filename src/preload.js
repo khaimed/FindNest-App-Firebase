@@ -139,9 +139,10 @@ document.querySelector(".extract_button").addEventListener("click", function () 
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
     // Create an anchor element and set its attributes
+    const inputValue = document.querySelector("input[type=text]").value
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'products.xlsx';
+    a.download = inputValue;
 
     // Append the anchor element to the document and click it programmatically
     document.body.appendChild(a);
