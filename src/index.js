@@ -86,7 +86,7 @@ const saveAppDB = (title, image, price, url) => {
 
 ipcMain.on('delete-all-data', (event) => {
   // Reference to the entire data
-  const entireDataRef = ref(database);
+  const entireDataRef = ref(database, "findnest/findNestApp");
 
   // Remove all data
   remove(entireDataRef)
@@ -104,8 +104,8 @@ ipcMain.on('avito-caller', async (event, value) => {
 
   try {
     driver = await new Builder().forBrowser('chrome')
-    .setChromeOptions(options)
-    .build();
+      .setChromeOptions(options)
+      .build();
 
     let url = 'https://www.avito.ma/';
     await driver.get(url)
@@ -186,9 +186,9 @@ ipcMain.on('avito-caller', async (event, value) => {
 ipcMain.on('jumia-caller',  async (event, value) => {
   let driver;
     try {
-      driver = await new Builder().forBrowser('chrome').build();
-      
-      await driver.manage().window().maximize(); // Maximize Window
+      driver = await new Builder().forBrowser('chrome')
+        .setChromeOptions(options)
+        .build();
   
       let url = 'https://www.jumia.ma/';
       await driver.get(url)
@@ -230,22 +230,16 @@ ipcMain.on('jumia-caller',  async (event, value) => {
 
       // Add headers to the data array
       data.push(['Titles', 'Images', 'Prices', 'Url']);
-      // function to click and navigate for each page
-      // const navigateToPage = async (x) => {
-      //   await driver.executeScript(`document.evaluate('//*[@id="jm"]/main/div[2]/div[3]/section/div[2]/a[${x}]', document, null, 
-      //       XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.click();`);
-      //   // await driver.findElement(By.xpath(`//*[@id="__next"]/div/main/div/div[5]/div[1]/div/div[2]/div/a[${x}]`)).click();
-      // }
       // Upload Data
       const uploadData = async () => {
         let titles = await driver.findElements(By.xpath('//*[@id="jm"]/main/div[2]/div[3]/section/div[1]/article/a[2]/div[2]/h3'))
-        let images = await driver.findElements(By.xpath('//*[@id="jm"]/main/div[2]/div[3]/section/div[1]/article/a[2]/div[1]/img'))
+        let images = await driver.findElements(By.xpath('//*[@id="jm"]/main/div[2]/div[3]/section/div[1]/article/a[2]/div[1]/img[1]'))
         let prices = await driver.findElements(By.xpath('//*[@id="jm"]/main/div[2]/div[3]/section/div[1]/article/a[2]/div[2]/div[1]'))
         let urls = await driver.findElements(By.xpath('//*[@id="jm"]/main/div[2]/div[3]/section/div[1]/article/a[2]'))
         for (let i = 0; i < titles.length; i++) {
           if (prices[i]) {
             let title = await titles[i].getText();
-            let image = await images[i].getAttribute('src');
+            let image = await images[i].getAttribute('data-src');
             let price = await prices[i].getText();
             let url = await urls[i].getAttribute('href');
             let article = title + '\n' + image + '\n' + price.replace(/,/g, '') + '\n' + url;
@@ -271,7 +265,6 @@ ipcMain.on('jumia-caller',  async (event, value) => {
         //here i want to send the progressValue to rendrer.js
         mainWindow.webContents.send("load-progress", progressValue);
 
-        let numberPages = (await driver.findElements(By.xpath('//*[@id="jm"]/main/div[2]/div[3]/section/div[2]/a'))).length
         if (i === 0) {
           await uploadData()
           // await navigateToPage(numberPages);

@@ -236,6 +236,10 @@ body{
   opacity: 1;
   transform: translateY(-200px);
 }
+.result .container .product a:hover img {
+  filter: brightness(0.4);
+  transition: .5s ease-in-out;
+}
 .result .container .product .product_price{
   font-size: 22px;
   line-height: 10px;
