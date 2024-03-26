@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain} = require('electron');
 const path = require('path');
-const { Builder, By, Key } = require('selenium-webdriver');
+const { Builder, By, Key, Actions } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
 
 let options = new chrome.Options();
@@ -98,7 +98,9 @@ ipcMain.on('delete-all-data', (event) => {
     });
 });
 
-// to Call all function for each one click
+// to Call all functions for each one click
+
+// Call Avito function
 ipcMain.on('avito-caller', async (event, value) => {
   let driver;
 
@@ -293,10 +295,110 @@ ipcMain.on('jumia-caller',  async (event, value) => {
     }
 });
 
-ipcMain.on('aliexpress-caller', (event, value) => {
+ipcMain.on('aliexpress-caller', async (event, value) => {
+  let driver;
+    try {
+      driver = await new Builder().forBrowser('chrome')
+        // .setChromeOptions(options)
+        .build();
   
+      let url = 'https://www.aliexpress.com/';
+      await driver.get(url)
+      // remove ads
+      xpathExpression = "/html/body/div[9]/div/div/img[2]"
+      const isXPathExists = (xpathExpression) =>{
+        return document.evaluate(xpathExpression, document, null, XPathResult.ANY_TYPE, null).iterateNext() !== null;
+      }
+      if(isXPathExists){
+          await driver.findElement(By.xpath(xpathExpression)).click()
+      }
+      // put the value to search
+      await driver.findElement(By.xpath('//*[@id="search-words"]')).sendKeys(value,Key.ENTER);
+      const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+      // get the final  number of page 
+      let finNumberPage = await driver.findElement(By.xpath('//*[@id="root"]/div[1]/div/div[2]/div[3]/ul/li/a[last()]')).getText();
+
+      await sleep(1000)
+
+      let data = [];
+
+      ipcMain.on('stop-searching', async (event) => {
+        await driver.quit()
+      });
+      const scrollDownToBottom = async() => {
+        // Create an instance of Actions
+        const actions = new Actions(driver);
+    
+        // Perform a scroll down action
+        await actions.sendKeys(Key.END).perform();
+      }
+      // // Add headers to the data array
+      data.push(['Titles', 'Images', 'Prices', 'Url']);
+      // // Upload Data
+      const uploadData = async () => {
+        let titles = await driver.findElements(By.xpath('//*[@id="card-list"]/div/div/a/div[2]/div[1]/h3'))
+        let images = await driver.findElements(By.xpath('//*[@id="card-list"]/div/div/a/div[1]/div[1]/div[1]/div/img[1]'))
+        let prices = await driver.findElements(By.xpath('//*[contains(@class, "multi--price-sale")]'));
+        let urls = await driver.findElements(By.xpath('//*[@id="card-list"]/div/div/a'))
+        for (let i = 0; i < titles.length; i++) {
+          if (prices[i]) {
+            await scrollDownToBottom();
+            let title = await titles[i].getText();
+            let image = await images[i].getAttribute('src');
+            let price = await prices[i].getText();
+            let url = await urls[i].getAttribute('href');
+            console.log(title)
+            console.log(image)
+            console.log(price)
+            console.log(url)
+            let article = title + '\n' + image + '\n' + price.replace(/,/g, '') + '\n' + url;
+            let articles = article.split('\n');
+            data.push(articles);
+            saveAppDB(title , image , price.replace(/,/g, ''), url)
+          }
+        }
+      }
+      // The final number page to stop it
+      if(finNumberPage === 0){
+        await uploadData()
+        mainWindow.webContents.send("load-progress", 100);
+      }
+      // Browse for a specified period
+      for (let i = 0; i < finNumberPage; i++) {
+        // console.log(`The page ${i + 1}`)
+
+        const progressValue = (((i + 1) / finNumberPage) * 100).toFixed(2);
+        // console.log(progressValue)
+
+        //here i want to send the progressValue to rendrer.js
+        mainWindow.webContents.send("load-progress", progressValue);
+
+        if (i === 0) {
+          await uploadData()
+          await driver.executeScript(`document.evaluate('//*[@id="jm"]/main/div[2]/div[3]/section/div[2]/a[6]', document, null, 
+           XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.click();`);
+        } else if (i + 1 === finNumberPage) {
+          console.log('stopping the loop.');
+          break;
+        } else {
+          await uploadData();
+          await driver.executeScript(`document.evaluate('//*[@id="root"]/div[1]/div/div[2]/div[3]/ul/li/button', document, null, 
+           XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue.click();`);
+        }
+      }
+
+      onValue(findNestDB, (snapshot) => {
+        const data = snapshot.val();
+        mainWindow.webContents.send('data-read', data);
+      });
+      await driver.quit();
+
+    } catch (error){
+      console.error(error)
+      await driver.quit();
+    }
 });
 
-ipcMain.on('banggood-caller', (event, value) => {
+ipcMain.on('banggood-caller', async (event, value) => {
   
 });
