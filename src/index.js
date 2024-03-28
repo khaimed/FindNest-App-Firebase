@@ -347,10 +347,6 @@ ipcMain.on('aliexpress-caller', async (event, value) => {
             let image = await images[i].getAttribute('src');
             let price = await prices[i].getText();
             let url = await urls[i].getAttribute('href');
-            console.log(title)
-            console.log(image)
-            console.log(price)
-            console.log(url)
             let article = title + '\n' + image + '\n' + price.replace(/,/g, '') + '\n' + url;
             let articles = article.split('\n');
             data.push(articles);
